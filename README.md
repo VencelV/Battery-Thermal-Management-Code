@@ -6,7 +6,7 @@ ROS2 interface for the Wolf DBW vehicle with JAUS protocol support.
 
 This package provides a ROS2 bridge to the Wolf DBW vehicle's JAUS interface, allowing control via joystick and publishing vehicle state to standard ROS2 topics.
 
-It also supports **waypoint navigation**: waypoints are clicked on a live satellite map in RViz on the driver station, sent to the vehicle, and tracked using the VectorNav GNSS/IMU. A `fake_data` package simulates the whole vehicle on a laptop so the full flow can be tested without hardware.
+It also supports waypoint navigation: waypoints are clicked on a live satellite map in RViz on the driver station, sent to the vehicle, and tracked using the VectorNav GNSS/IMU. A `fake_data` package simulates the whole vehicle on a laptop so the full flow can be tested without hardware.
 
 ## Architecture
 
@@ -41,7 +41,7 @@ It also supports **waypoint navigation**: waypoints are clicked on a live satell
 git clone https://github.com/tamu-edu/wolf_ros.git --recursive
 ```
 
-> `src/vectornav` is a **git submodule** (private repo). The DS image never copies it, so only the vehicle clone needs `--recursive`. The `tamu-edu/wolf_ros` repo itself is **private** - a plain `https://` clone prompts for a GitHub username/password and fails non-interactively. Use an SSH clone (`git clone --recurse-submodules git@github.com:tamu-edu/wolf_ros.git`) or a personal access token with https.
+`src/vectornav` is a git submodule (private repo) that only the vehicle clone needs (`--recursive`). The `tamu-edu/wolf_ros` repo itself is private, so use an SSH clone or a personal access token instead of a plain `https://` clone.
 
 ### Configure network settings
 
@@ -163,7 +163,7 @@ Default mapping (PS4/Xbox layout):
 - **LB (Button 4)**: Cycle / load a saved path file (`path_recorder_node`)
 - **RB (Button 5)**: Save the path (`path_recorder_node`)
 
-Button/axis indices are standard Linux gamepad indices - confirm with `ros2 topic echo /joy` on the DS Pi. The vehicle only moves when mode is `PATHING` **and** state is `ENABLED` (RT held); in `TELEOP` mode it follows the sticks.
+Button/axis indices are standard Linux gamepad indices - confirm with `ros2 topic echo /joy` on the DS Pi. The vehicle only moves when mode is `PATHING` and state is `ENABLED` (RT held); in `TELEOP` mode it follows the sticks.
 
 ## JAUS Information
 
@@ -183,8 +183,8 @@ Key facts:
 - **Emergency Stop**: Connect the stock controller and use it as an E-STOP.
 - **Auto-Release**: Control is automatically released on shutdown.
 - **Motion stop**: Absence of an IOP command for >300 ms stops the vehicle.
-- **Single joystick source**: Only the DS Pi publishes `/joy`. `input_node` forces DISABLED whenever it sees an idle `/joy` (axes[5] = 0), so a second source (e.g. a host-side `joy_node` on the vehicle) would fight and the vehicle could not stay enabled.
-- **Simulation isolation**: Never run `wolf_fake_data` while linked to the vehicle - a second `/nav/map_origin` and `/vectornav/gnss` corrupts the map anchor.
+- **Single joystick source**: Only the DS Pi publishes `/joy`. `input_node` forces DISABLED whenever it sees an idle `/joy` (axes[5] = 0).
+- **Simulation isolation**: `wolf_fake_data` publishes its own `/nav/map_origin` and `/vectornav/gnss`, so it should not run while linked to the real vehicle.
 
 ## Troubleshooting
 
@@ -225,9 +225,9 @@ Key facts:
 
 - Usually from a stale rviz_satellite cache/URL from a previous session. The current Esri URL serves tiles fine.
 
-### Docker gotchas
+### Docker notes
 
-- `docker restart` preserves env; `docker compose up -d` re-reads it. After changing `MOTION` or other compose env, recreate with `up -d`, not `restart`.
-- The PathManagerPanel `.so` is baked into the image by the Dockerfile `colcon build`. Only rebuild it if you edit `src/wolf_rviz_control/`.
-- Python edits to `src/{path_manager,fake_data}` are hot (bind-mounted and shadow the image copies); they apply on `restart` with no rebuild.
-- Make sure `path_records/` exists at the repo root (the `/path_records` mount).
+- `docker restart` preserves env; `docker compose up -d` re-reads it. After changing `MOTION` or other compose env, recreate with `up -d`.
+- The PathManagerPanel `.so` is baked into the image by the Dockerfile `colcon build`. Rebuild only if you edit `src/wolf_rviz_control/`.
+- Python edits to `src/{path_manager,fake_data}` are hot (bind-mounted); they apply on `restart` with no rebuild.
+- `path_records/` must exist at the repo root (the `/path_records` mount).
